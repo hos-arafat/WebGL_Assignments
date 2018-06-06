@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+
+<header>
+<div>
+<button id = "ButtonX">Rotate X</button>
+<button id = "ButtonY">Rotate Y</button>
+<button id = "ButtonZ">Rotate Z</button>
+<button id = "ButtonT">Toggle Rotation</button>
+<button id = "ButtonRot_Dir">Toggle Direction</button>
+</br>
+</br>
+<button id = "Button_Proj">Toggle Projection</button>
+<button id = "Button_Light">Toggle Lighting</button>
+</div>
+</br>
+<div>
+Scaling <input id="Scaling_slider" type="range" min="0.1" max="1" step="0.01" value="0.5"/>
+</br>
+</br>
+Translate X <input id="Transl_X_slider" type="range" min="-1" max="1" step="0.01" value="0" />
+Translate Y <input id="Transl_Y_slider" type="range" min="-1" max="1" step="0.01" value="0" />
+Translate Z <input id="Transl_Z_slider" type="range" min="-5" max="5" step="0.01" value="0" />
+</div>
+Near <input id="Near_plane_slider" type="range" min="0.1" max="2" step="0.01" value="1" />
+Far <input id="Far_plane_slider" type="range" min="2" max="10" step="0.01" value="6" />
+</header>
+
+<script id="vertex-shader" type="x-shader/x-vertex">
+
+uniform bool togl_light_flag;
+uniform vec4 ambient_product, diffuse_product, specular_product;
+uniform vec4 light_position;
+uniform float shininess;
+varying vec3 N, L, E;
+varying vec3 N_goru, L_goru, E_goru;
+
+attribute  vec4 vPosition;
+attribute  vec3 vNormal;
+
+varying vec4 fColor;
+
+uniform vec3 theta;
+
+uniform mat4 model_view_matrix;
+uniform mat4 projection_matrix;
+
+void main()
+{
+  vec3 pos = -(model_view_matrix * vPosition).xyz;
+
+  //fixed light postion
+  vec3 light = light_position.xyz;
+  vec3 L = normalize( light - pos );
+  vec3 E = normalize( -pos );
+  vec3 H = normalize( L + E );
+  vec4 NN = vec4(vNormal,0);
+
+  // Transform vertex normal into eye coordinates
+  vec3 N = normalize( (model_view_matrix * NN).xyz);
+
+  if(togl_light_flag)
+  {
+      // Compute terms in the illumination equation
+      vec4 ambient = ambient_product;
+      float Kd = max( dot(L, N), 0.0 );
+      vec4  diffuse = Kd * diffuse_product;
+      float Ks = pow( max(dot(N, H), 0.0), shininess );
+      vec4  specular = Ks * specular_product;
+
+      if( dot(L, N) < 0.0 ) {
+            specular = vec4(0.0, 0.0, 0.0, 1.0);
+          }
+      fColor = ambient + diffuse + specular;
+      fColor.a = 1.0;
+    }
+    else
+    {
+        L_goru = L;
+        N_goru = N;
+        E_goru = E;
+    }
+      gl_Position = projection_matrix * model_view_matrix * vPosition;
+}
+</script>
+
+<script id="fragment-shader" type="x-shader/x-fragment">
+
+uniform bool togl_light_flag;
+
+precision mediump float;
+
+varying vec4 fColor;
+
+uniform vec4 goru_ambient_product; // RENAME THESE
+uniform vec4 goru_diffuse_product;
+uniform vec4 goru_specular_product;
+uniform float goru_shininess;
+varying vec3 N_goru, L_goru, E_goru;
+
+void
+main()
+{
+
+  if(togl_light_flag)
+ {
+   gl_FragColor = fColor;
+ }
+ else
+ {
+   vec4 goru_fColor;
+   vec3 H = normalize( L_goru + E_goru );
+   vec4 ambient = goru_ambient_product;
+   float Kd = max( dot(L_goru, N_goru), 0.0 );
+   vec4 diffuse = Kd * goru_diffuse_product;
+   float Ks = pow(max(dot(N_goru, H), 0.0), goru_shininess);
+   vec4 specular = Ks * goru_specular_product;
+   if( dot(L_goru, N_goru) < 0.0 ) {
+      specular = vec4(0.0, 0.0, 0.0, 1.0);
+   }
+   goru_fColor = ambient + diffuse + specular;
+   goru_fColor.a = 1.0;
+   gl_FragColor = goru_fColor;
+ }
+
+}
+</script>
+
+<script type="text/javascript" src="../Common/webgl-utils.js"></script>
+<script type="text/javascript" src="../Common/initShaders.js"></script>
+<script type="text/javascript" src="../Common/MV.js"></script>
+<script type="text/javascript" src="Homework1.js"></script>
+
+<body>
+<canvas id="gl-canvas" width="900" height="900">
+Oops ... your browser doesn't support the HTML5 canvas element
+</canvas>
+</body>
+</html>
